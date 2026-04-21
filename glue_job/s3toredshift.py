@@ -28,7 +28,7 @@ source = glueContext.create_dynamic_frame.from_catalog(
 
 # Write to Redshift via Glue connection
 glueContext.write_dynamic_frame.from_jdbc_conf(
-    frame=datasource,
+    frame=source,
     catalog_connection="testconnection_refshift1",
     connection_options={
         "dbtable": "public.taxi_join",
