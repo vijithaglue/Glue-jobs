@@ -134,7 +134,7 @@ Resources:
                   - "secretsmanager:GetSecretValue"
                 Resource:
                   - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:glue/github-pat*"
-                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:redshift!redshift-cluster-1-awsuser*"
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:redshift!redshift-cluster-2-awsuser*"
 
   GlueJob:
     Type: AWS::Glue::Job
@@ -177,7 +177,7 @@ Resources:
         "--TempDir": !Sub "s3://${ScriptBucket}/tmp/"
       Connections:
         Connections:
-          - testconnection_refshift1
+          - Redshift-2
 
 Outputs:
   GlueJobName:

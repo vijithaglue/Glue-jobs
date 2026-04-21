@@ -28,7 +28,7 @@ job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
 SOURCE_PATH = "s3://athena-ctas-result/SampleTaxis/"
-REDSHIFT_CONNECTION = "testconnection_refshift1"
+REDSHIFT_CONNECTION = "Redshift-2"
 REDSHIFT_DATABASE = "dev"
 STAGING_TABLE = "public.taxi_lookup_staging"
 TARGET_TABLE = "public.taxi_lookup"
