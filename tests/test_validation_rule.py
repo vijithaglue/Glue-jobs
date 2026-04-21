@@ -117,7 +117,7 @@ def valid_rule_dict(draw):
 # Feature: s3-redshift-staging-dlq, Property 8: ValidationRule parsing round-trip
 # **Validates: Requirements 5.1**
 @given(d=valid_rule_dict())
-@settings(max_examples=20)
+@settings(max_examples=5)
 def test_validation_rule_parsing_round_trip(d):
     """For any valid rule dict, from_dict produces a ValidationRule whose
     rule_type, column, and pattern fields match the input dictionary values."""

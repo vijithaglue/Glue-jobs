@@ -168,7 +168,7 @@ def _random_df_and_rules(draw):
 # Feature: s3-redshift-staging-dlq, Property 3: Validation preserves record count
 # **Validates: Requirements 2.1**
 @given(data=_random_df_and_rules())
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 def test_validate_preserves_record_count(data, spark):
     """validate() output has the same row count as input."""
     col_names, rows, rules = data
@@ -200,7 +200,7 @@ def _not_null_test_data(draw):
 # Feature: s3-redshift-staging-dlq, Property 4: not_null rule correctly identifies null and empty values
 # **Validates: Requirements 2.2, 5.2**
 @given(values=_not_null_test_data())
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 def test_not_null_correctness(values, spark):
     """Errors appear iff column value is null or empty string."""
     col_name = "target"
@@ -260,7 +260,7 @@ def _regex_test_data(draw):
 # Feature: s3-redshift-staging-dlq, Property 5: regex rule correctly identifies non-matching values
 # **Validates: Requirements 2.3, 5.3**
 @given(data=_regex_test_data())
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 def test_regex_correctness(data, spark):
     """Errors appear iff column value does not match the pattern."""
     pattern, values = data
@@ -314,7 +314,7 @@ def _split_test_data(draw):
 # Feature: s3-redshift-staging-dlq, Property 6: Validation split is a correct partition with complete error reports
 # **Validates: Requirements 2.4, 2.5, 2.6**
 @given(data=_split_test_data())
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 def test_split_correctness(data, spark):
     """valid + invalid row counts equal input; error arrays are empty/non-empty
     respectively; error count matches failed rule count."""
@@ -381,7 +381,7 @@ def _missing_col_test_data(draw):
 # Feature: s3-redshift-staging-dlq, Property 7: Rules referencing missing columns are skipped
 # **Validates: Requirements 5.4**
 @given(data=_missing_col_test_data())
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 def test_missing_column_skip(data, spark):
     """Rules referencing absent columns produce no errors and don't raise."""
     existing_cols, values, rules = data

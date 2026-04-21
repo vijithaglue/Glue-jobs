@@ -24,11 +24,11 @@
 
 ## Task 3: Implement DLQ Writer
 
-- [ ] 3.1 Create `glue_job/dlq_writer.py` with `build_dlq_path(dlq_base_path, job_run_date) -> str` function that constructs the partitioned S3 path
+- [x] 3.1 Create `glue_job/dlq_writer.py` with `build_dlq_path(dlq_base_path, job_run_date) -> str` function that constructs the partitioned S3 path
   - Path pattern: `<dlq_base_path>/year=YYYY/month=MM/day=DD/`
   - _Requirements: 4.3_
 
-- [ ] 3.2 Implement `write_dlq(invalid_df, dlq_base_path, job_run_date) -> int` function that writes invalid records as JSON to the partitioned path and returns the record count
+- [x] 3.2 Implement `write_dlq(invalid_df, dlq_base_path, job_run_date) -> int` function that writes invalid records as JSON to the partitioned path and returns the record count
   - Write in JSON format with original fields + `_validation_errors`
   - _Requirements: 4.1, 4.2_
 
@@ -45,11 +45,11 @@
 
 ## Task 4: Implement Staging Merger SQL builders
 
-- [ ] 4.1 Create `glue_job/staging_merger.py` with `build_merge_preactions(staging_table, target_table) -> str` that generates DROP + CREATE SQL
+- [x] 4.1 Create `glue_job/staging_merger.py` with `build_merge_preactions(staging_table, target_table) -> str` that generates DROP + CREATE SQL
   - SQL: `DROP TABLE IF EXISTS <staging>; CREATE TABLE <staging> (LIKE <target>);`
   - _Requirements: 1.2_
 
-- [ ] 4.2 Implement `build_merge_postactions(staging_table, target_table) -> str` that generates transactional DELETE + INSERT + DROP SQL
+- [x] 4.2 Implement `build_merge_postactions(staging_table, target_table) -> str` that generates transactional DELETE + INSERT + DROP SQL
   - SQL: `BEGIN TRANSACTION; DELETE FROM <target>; INSERT INTO <target> SELECT * FROM <staging>; DROP TABLE IF EXISTS <staging>; END TRANSACTION;`
   - _Requirements: 3.3_
 
@@ -66,52 +66,52 @@
 
 ## Task 5: Checkpoint - Validate components before integration
 
-- [ ] 5. Ensure all tests pass, ask the user if questions arise.
+- [x] 5. Ensure all tests pass, ask the user if questions arise.
 
 ## Task 6: Refactor s3toredshift.py job orchestration
 
-- [ ] 6.1 Refactor `glue_job/s3toredshift.py` to extract a `run_job()` function that accepts glue_context, spark, args, and validation_rules parameters
+- [x] 6.1 Refactor `glue_job/s3toredshift.py` to extract a `run_job()` function that accepts glue_context, spark, args, and validation_rules parameters
   - Move existing top-level logic into `run_job()`
   - Keep module-level constants (SOURCE_PATH, REDSHIFT_CONNECTION, etc.)
   - _Requirements: 1.1, 1.2_
 
-- [ ] 6.2 Define default `VALIDATION_RULES` configuration list and `DLQ_PATH` constant in the job script
+- [x] 6.2 Define default `VALIDATION_RULES` configuration list and `DLQ_PATH` constant in the job script
   - Rules: not_null on vendor_id, not_null on pickup_datetime, regex on vendor_id
   - DLQ path: `s3://<bucket>/dlq/s3toredshift/`
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 6.3 Integrate ValidationEngine: after staging load, call `validate()` and `split_valid_invalid()` on the staged DataFrame
+- [x] 6.3 Integrate ValidationEngine: after staging load, call `validate()` and `split_valid_invalid()` on the staged DataFrame
   - Log total, valid, and invalid record counts
   - _Requirements: 2.1, 2.4, 2.5, 6.1_
 
-- [ ] 6.4 Integrate DLQ Writer: write invalid records to S3 DLQ path if any exist, skip and log if none
+- [x] 6.4 Integrate DLQ Writer: write invalid records to S3 DLQ path if any exist, skip and log if none
   - Wrap DLQ write in try/except: log error on failure, continue to merge
   - Log DLQ write count on success
   - _Requirements: 4.1, 4.4, 4.5, 6.2_
 
-- [ ] 6.5 Integrate Conditional Merge: use `build_merge_preactions` and `build_merge_postactions` to write only valid records, skip merge if no valid records
+- [x] 6.5 Integrate Conditional Merge: use `build_merge_preactions` and `build_merge_postactions` to write only valid records, skip merge if no valid records
   - Log warning and skip if zero valid records
   - Log merge count on success
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 6.3_
 
-- [ ] 6.6 Add try/finally block for staging table cleanup on both success and failure paths
+- [x] 6.6 Add try/finally block for staging table cleanup on both success and failure paths
   - Drop staging table in finally block, log error if DROP fails
   - _Requirements: 7.1, 7.2_
 
-- [ ] 6.7 Add logging for validation metrics (total, valid, invalid counts), DLQ write count, and merge count
+- [x] 6.7 Add logging for validation metrics (total, valid, invalid counts), DLQ write count, and merge count
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
 ## Task 7: Update CloudFormation template
 
-- [ ] 7.1 Add `DLQPath` parameter to `cloudformation/template.yaml` for the S3ToRedshiftJob
+- [x] 7.1 Add `DLQPath` parameter to `cloudformation/template.yaml` for the S3ToRedshiftJob
   - Default value: `s3://<bucket>/dlq/s3toredshift/`
   - _Requirements: 4.1, 4.3_
 
-- [ ] 7.2 Update IAM policy to grant S3 write access to the DLQ path
+- [x] 7.2 Update IAM policy to grant S3 write access to the DLQ path
   - Add PutObject permission for the DLQ S3 prefix
   - _Requirements: 4.1_
 
-- [ ] 7.3 Add `--DLQ_PATH` and `--extra-py-files` entries to the S3ToRedshiftJob DefaultArguments
+- [x] 7.3 Add `--DLQ_PATH` and `--extra-py-files` entries to the S3ToRedshiftJob DefaultArguments
   - Include validation_rule.py, validation_engine.py, dlq_writer.py, staging_merger.py in extra-py-files
   - _Requirements: 4.1, 5.1_
 
@@ -131,7 +131,7 @@
 
 ## Task 9: Final checkpoint - Ensure all tests pass
 
-- [ ] 9. Ensure all tests pass, ask the user if questions arise.
+- [x] 9. Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
 

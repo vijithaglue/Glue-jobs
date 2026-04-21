@@ -51,6 +51,11 @@ Parameters:
     Default: main
     Description: Branch name to link for source control.
 
+  DLQPath:
+    Type: String
+    Default: "s3://athena-ctas-result/dlq/s3toredshift/"
+    Description: S3 path prefix for the dead-letter queue used by the S3ToRedshift job.
+
 Resources:
   ScriptBucket:
     Type: AWS::S3::Bucket
@@ -125,6 +130,17 @@ Resources:
                   - "glue:CreateTable"
                   - "glue:UpdateTable"
                 Resource: "*"
+        - PolicyName: DLQBucketAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub
+                    - "${Path}*"
+                    - Path: !Ref DLQPath
         - PolicyName: SecretsManagerAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -175,6 +191,8 @@ Resources:
         "--job-language": python
         "--enable-continuous-cloudwatch-log": "true"
         "--TempDir": !Sub "s3://${ScriptBucket}/tmp/"
+        "--DLQ_PATH": !Ref DLQPath
+        "--extra-py-files": !Sub "s3://${ScriptBucket}/glue_job/validation_rule.py,s3://${ScriptBucket}/glue_job/validation_engine.py,s3://${ScriptBucket}/glue_job/dlq_writer.py,s3://${ScriptBucket}/glue_job/staging_merger.py"
       Connections:
         Connections:
           - Redshift-2
