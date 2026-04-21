@@ -2,6 +2,8 @@
 
 A collection of AWS Glue ETL jobs managed via CloudFormation with GitHub version control integration.
 
+> **Note:** All commands in this document assume you are running them from the `glue-github` project root directory, which contains the Glue job scripts and CloudFormation templates. Make sure to `cd glue-github` before executing any commands.
+
 ## Glue Jobs
 
 | Job Name | Description |
