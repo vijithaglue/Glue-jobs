@@ -18,7 +18,7 @@
     "--enable-continuous-cloudwatch-log" : "true"
   },
   "connections" : {
-    "connections" : [ "testconnection_refshift1" ]
+    "connections" : [ "Redshift-2" ]
   },
   "maxRetries" : 0,
   "allocatedCapacity" : 2,
