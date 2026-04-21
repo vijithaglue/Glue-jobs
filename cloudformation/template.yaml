@@ -157,10 +157,34 @@ Resources:
       #   --folder glue_scripts --auth-strategy PERSONAL_ACCESS_TOKEN \
       #   --auth-token <pat-value>
 
+  S3ToRedshiftJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: !Sub "${AWS::StackName}-s3toredshift"
+      Role: !GetAtt GlueJobRole.Arn
+      GlueVersion: !Ref GlueVersion
+      WorkerType: !Ref WorkerType
+      NumberOfWorkers: !Ref NumberOfWorkers
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${ScriptBucket}/glue_job/s3toredshift.py"
+        PythonVersion: "3"
+      DefaultArguments:
+        "--job-language": python
+        "--enable-continuous-cloudwatch-log": "true"
+        "--TempDir": !Sub "s3://${ScriptBucket}/tmp/"
+      Connections:
+        Connections:
+          - testconnection_refshift1
+
 Outputs:
   GlueJobName:
     Description: Name of the provisioned Glue job.
     Value: !Ref GlueJob
+
+  S3ToRedshiftJobName:
+    Description: Name of the S3-to-Redshift Glue job.
+    Value: !Ref S3ToRedshiftJob
 
   ScriptBucketName:
     Description: Name of the S3 bucket storing the job script.

@@ -1,20 +1,29 @@
-# AWS Glue S3-to-Catalog ETL Job
+# AWS Glue Jobs
 
-An AWS Glue ETL job that reads data from an S3 source bucket (CSV or JSON), writes processed output in Parquet format to a target S3 bucket, and registers the dataset in the AWS Glue Data Catalog.
+A collection of AWS Glue ETL jobs managed via CloudFormation with GitHub version control integration.
+
+## Glue Jobs
+
+| Job Name | Description |
+|---|---|
+| `glue-s3-catalog-job-etl-job` | Reads CSV/JSON from S3, writes Parquet to S3, registers in Glue Catalog |
+| `glue-s3-catalog-job-s3toredshift` | Reads from Glue Catalog table `taxi_join` and writes to Redshift |
 
 ## Project Structure
 
 ```
 ├── glue_job/
 │   ├── __init__.py
-│   ├── glue_job.py          # Main ETL script
-│   ├── params.py            # Job parameter parsing
-│   └── format_detector.py   # Source format detection
+│   ├── glue_job.py            # S3-to-Catalog ETL script
+│   ├── s3toredshift.py        # S3-to-Redshift ETL script
+│   ├── taxi_join.py           # Taxi join script
+│   ├── params.py              # Job parameter parsing
+│   └── format_detector.py     # Source format detection
 ├── cloudformation/
-│   └── template.yaml        # CloudFormation template
+│   └── template.yaml          # CloudFormation template
 ├── tests/
 │   ├── __init__.py
-│   ├── conftest.py          # Shared test fixtures
+│   ├── conftest.py
 │   ├── test_format_detector.py
 │   └── test_params.py
 ├── requirements.txt
@@ -38,16 +47,6 @@ An AWS Glue ETL job that reads data from an S3 source bucket (CSV or JSON), writ
    ```bash
    pytest
    ```
-
-## Job Parameters
-
-| Parameter | Required | Description |
-|---|---|---|
-| `source_path` | Yes | S3 path to the source data (e.g. `s3://my-bucket/input/`) |
-| `target_path` | Yes | S3 path for the Parquet output (e.g. `s3://my-bucket/output/`) |
-| `catalog_database` | Yes | Glue Catalog database name |
-| `catalog_table_name` | Yes | Glue Catalog table name |
-| `partition_key` | No | Column name to partition output by |
 
 ## Deployment
 
@@ -80,18 +79,21 @@ AWS_PAGER="" aws cloudformation describe-stacks \
   --output text
 ```
 
-### 4. Upload the job script and supporting modules to S3
+### 4. Upload all job scripts to S3
 
 Replace `<SCRIPT_BUCKET>` with the bucket name from step 3.
 
 ```bash
 aws s3 cp glue_job/glue_job.py s3://<SCRIPT_BUCKET>/glue_job/glue_job.py
+aws s3 cp glue_job/s3toredshift.py s3://<SCRIPT_BUCKET>/glue_job/s3toredshift.py
 aws s3 cp glue_job/params.py s3://<SCRIPT_BUCKET>/glue_job/params.py
 aws s3 cp glue_job/format_detector.py s3://<SCRIPT_BUCKET>/glue_job/format_detector.py
 aws s3 cp glue_job/__init__.py s3://<SCRIPT_BUCKET>/glue_job/__init__.py
 ```
 
-### 5. Run the Glue job
+## Running the Jobs
+
+### S3-to-Catalog ETL Job
 
 ```bash
 AWS_PAGER="" aws glue start-job-run \
@@ -106,11 +108,19 @@ AWS_PAGER="" aws glue start-job-run \
 
 To include partitioning, add `"--partition_key": "column_name"` to the arguments.
 
-### 6. Check job run status
+### S3-to-Redshift Job
+
+Reads from Glue Catalog table `taxi_join` in `parquetdb` database and writes to Redshift `dev` database using Glue connection `testconnection_refshift1`.
+
+```bash
+AWS_PAGER="" aws glue start-job-run --job-name glue-s3-catalog-job-s3toredshift
+```
+
+### Check job run status
 
 ```bash
 AWS_PAGER="" aws glue get-job-run \
-  --job-name glue-s3-catalog-job-etl-job \
+  --job-name <JOB_NAME> \
   --run-id <RUN_ID>
 ```
 
@@ -120,13 +130,14 @@ Replace `<RUN_ID>` with the value returned by `start-job-run`.
 
 ### Git (local to GitHub)
 
-- Remote: `https://github.com/vijithaglue/Glue-jobs.git`
-- Push changes: `git push origin main`
-- Pull latest: `git pull origin main`
+```bash
+git push origin main
+git pull origin main
+```
 
 ### Glue Source Control (Glue job to/from GitHub)
 
-The Glue job has version control enabled with GitHub. The PAT is fetched automatically from Secrets Manager at runtime so you never need to copy/paste it.
+The PAT is fetched automatically from Secrets Manager so you never need to copy/paste it.
 
 Push Glue job script to GitHub:
 
@@ -140,7 +151,11 @@ Pull from GitHub into Glue job:
 AWS_PAGER="" aws glue update-job-from-source-control --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')"
 ```
 
-Optionally, add these as shell aliases in `~/.zshrc` for convenience:
+For the s3toredshift job, replace `--job-name glue-s3-catalog-job-etl-job` with `--job-name glue-s3-catalog-job-s3toredshift` in the commands above.
+
+### Shell Aliases (optional)
+
+Add to `~/.zshrc` for convenience:
 
 ```bash
 alias glue-push='AWS_PAGER="" aws glue update-source-control-from-job --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c '"'"'import sys,json;print(json.load(sys.stdin)["token"])'"'"')"'
