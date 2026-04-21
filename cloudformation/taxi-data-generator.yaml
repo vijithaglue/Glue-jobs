@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Lambda function that generates ~42 MB of sample taxi lookup CSV data
+  per hour, partitioned by date/hour in S3. EventBridge schedule runs
+  hourly for today (2026-04-21) only.
+
+Parameters:
+  TargetBucket:
+    Type: String
+    Default: athena-ctas-result
+    Description: S3 bucket for generated taxi data.
+
+  ScheduleEndDate:
+    Type: String
+    Default: "2026-04-22"
+    Description: >
+      Date (YYYY-MM-DD) when the schedule stops. Set to tomorrow to
+      run for today only.
+
+Resources:
+  TaxiDataGeneratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: S3WriteAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::${TargetBucket}/SampleTaxis/*"
+
+  TaxiDataGeneratorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: taxi-data-generator
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt TaxiDataGeneratorRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import boto3, csv, io, random, string
+          from datetime import datetime, timezone
+
+          S3_BUCKET = "athena-ctas-result"
+          S3_PREFIX = "SampleTaxis"
+          TARGET_BYTES = 42 * 1024 * 1024
+
+          BOROUGHS = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island", "EWR"]
+          ZONES = ["Newark Airport", "Jamaica Bay", "Allerton/Pelham Gardens", "Alphabet City",
+                   "Arden Heights", "Astoria", "Astoria Park", "Auburndale", "Baisley Park",
+                   "Bath Beach", "Battery Park", "Battery Park City", "Bay Ridge", "Bayside",
+                   "Bedford", "Belmont", "Bensonhurst East", "Bloomingdale", "Boerum Hill",
+                   "Borough Park", "Brighton Beach", "Bronx Park", "Brooklyn Heights",
+                   "Brownsville", "Bushwick North", "Canarsie", "Carroll Gardens",
+                   "Central Harlem", "Central Park", "Chinatown", "Clinton East",
+                   "Clinton Hill", "Cobble Hill", "College Point", "Coney Island", "Corona",
+                   "Crown Heights North", "Downtown Brooklyn/MetroTech", "Dyker Heights",
+                   "East Chelsea", "East Elmhurst", "East Flatbush/Farragut", "East Flushing",
+                   "East Harlem North", "East New York", "East Village", "Elmhurst"]
+          SERVICE_ZONES = ["Boro Zone", "Yellow Zone", "Airports"]
+
+          def generate_row(lid):
+              return {"LocationID": lid, "Borough": random.choice(BOROUGHS),
+                      "Zone": random.choice(ZONES), "service_zone": random.choice(SERVICE_ZONES),
+                      "pickup_count": random.randint(0, 50000),
+                      "dropoff_count": random.randint(0, 50000),
+                      "avg_fare": round(random.uniform(5.0, 120.0), 2),
+                      "avg_distance": round(random.uniform(0.5, 30.0), 2),
+                      "avg_duration_min": round(random.uniform(2.0, 90.0), 1),
+                      "avg_tip": round(random.uniform(0.0, 25.0), 2),
+                      "avg_total": round(random.uniform(6.0, 150.0), 2),
+                      "trip_type": random.choice(["Street-hail", "Dispatch"]),
+                      "payment_type": random.choice(["Credit card", "Cash", "No charge", "Dispute"]),
+                      "notes": ''.join(random.choices(string.ascii_letters + " ", k=random.randint(20, 100)))}
+
+          def handler(event, context):
+              now = datetime.now(timezone.utc)
+              key = f"{S3_PREFIX}/year={now.year}/month={now.month:02d}/day={now.day:02d}/hour={now.hour:02d}/data.csv"
+              buf = io.StringIO()
+              writer = None
+              lid = 1
+              while buf.tell() < TARGET_BYTES:
+                  row = generate_row(lid)
+                  if writer is None:
+                      writer = csv.DictWriter(buf, fieldnames=row.keys())
+                      writer.writeheader()
+                  writer.writerow(row)
+                  lid += 1
+              data = buf.getvalue().encode("utf-8")
+              buf.close()
+              boto3.client("s3").put_object(Bucket=S3_BUCKET, Key=key, Body=data, ContentType="text/csv")
+              return {"statusCode": 200, "partition": key, "size_mb": round(len(data)/(1024*1024), 2), "rows": lid - 1}
+
+  HourlyScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: taxi-data-generator-hourly
+      Description: Triggers taxi data generator Lambda every hour
+      ScheduleExpression: "rate(1 hour)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt TaxiDataGeneratorFunction.Arn
+          Id: TaxiDataGeneratorTarget
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref TaxiDataGeneratorFunction
+      Action: "lambda:InvokeFunction"
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt HourlyScheduleRule.Arn
+
+Outputs:
+  LambdaFunctionName:
+    Description: Name of the taxi data generator Lambda function.
+    Value: !Ref TaxiDataGeneratorFunction
+
+  ScheduleRuleName:
+    Description: Name of the EventBridge hourly schedule rule.
+    Value: !Ref HourlyScheduleRule
