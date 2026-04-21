@@ -87,11 +87,11 @@
     - Validate `SourceControlDetails` is present with correct provider and auth strategy
     - _Requirements: 5.1, 5.2, 5.3, 6.5_
 
-- [-] 8. Initialize Git repository and configure remote
-  - [-] 8.1 Initialize Git repo and configure remote
+- [x] 8. Initialize Git repository and configure remote
+  - [x] 8.1 Initialize Git repo and configure remote
     - Run `git init`, add `.gitignore`, create initial commit
     - Add remote: `git remote add origin https://github.com/vijithaglue/Glue-jobs.git`
     - _Requirements: 6.1, 6.3, 6.4_
 
-- [ ] 9. Final Checkpoint - Make sure all tests are passing
+- [x] 9. Final Checkpoint - Make sure all tests are passing
   - Ensure all tests pass, ask the user if questions arise.

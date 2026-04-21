@@ -14,7 +14,9 @@ An AWS Glue ETL job that reads data from an S3 source bucket (CSV or JSON), writ
 │   └── template.yaml        # CloudFormation template
 ├── tests/
 │   ├── __init__.py
-│   └── conftest.py          # Shared test fixtures
+│   ├── conftest.py          # Shared test fixtures
+│   ├── test_format_detector.py
+│   └── test_params.py
 ├── requirements.txt
 └── README.md
 ```
@@ -49,23 +51,70 @@ An AWS Glue ETL job that reads data from an S3 source bucket (CSV or JSON), writ
 
 ## Deployment
 
-1. Store your GitHub PAT in AWS Secrets Manager:
-   ```bash
-   aws secretsmanager create-secret \
-     --name glue/github-pat \
-     --secret-string '{"token":"<your-github-pat>"}'
-   ```
+### 1. Store your GitHub PAT in AWS Secrets Manager
 
-2. Deploy the CloudFormation stack:
-   ```bash
-   aws cloudformation deploy \
-     --template-file cloudformation/template.yaml \
-     --stack-name glue-s3-catalog-job \
-     --parameter-overrides \
-       SourceBucketArn=arn:aws:s3:::my-source-bucket \
-       TargetBucketArn=arn:aws:s3:::my-target-bucket \
-     --capabilities CAPABILITY_NAMED_IAM
-   ```
+```bash
+aws secretsmanager create-secret \
+  --name glue/github-pat \
+  --secret-string '{"token":"<your-github-pat>"}'
+```
+
+### 2. Deploy the CloudFormation stack
+
+```bash
+AWS_PAGER="" aws cloudformation deploy \
+  --template-file cloudformation/template.yaml \
+  --stack-name glue-s3-catalog-job \
+  --parameter-overrides \
+    SourceBucketArn=arn:aws:s3:::my-source-bucket \
+    TargetBucketArn=arn:aws:s3:::my-target-bucket \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+### 3. Get the Script Bucket name
+
+```bash
+AWS_PAGER="" aws cloudformation describe-stacks \
+  --stack-name glue-s3-catalog-job \
+  --query "Stacks[0].Outputs[?OutputKey=='ScriptBucketName'].OutputValue" \
+  --output text
+```
+
+### 4. Upload the job script and supporting modules to S3
+
+Replace `<SCRIPT_BUCKET>` with the bucket name from step 3.
+
+```bash
+aws s3 cp glue_job/glue_job.py s3://<SCRIPT_BUCKET>/glue_job/glue_job.py
+aws s3 cp glue_job/params.py s3://<SCRIPT_BUCKET>/glue_job/params.py
+aws s3 cp glue_job/format_detector.py s3://<SCRIPT_BUCKET>/glue_job/format_detector.py
+aws s3 cp glue_job/__init__.py s3://<SCRIPT_BUCKET>/glue_job/__init__.py
+```
+
+### 5. Run the Glue job
+
+```bash
+AWS_PAGER="" aws glue start-job-run \
+  --job-name glue-s3-catalog-job-etl-job \
+  --arguments '{
+    "--source_path": "s3://my-source-bucket/path/to/data/",
+    "--target_path": "s3://my-target-bucket/output/",
+    "--catalog_database": "my_database",
+    "--catalog_table_name": "my_table"
+  }'
+```
+
+To include partitioning, add `"--partition_key": "column_name"` to the arguments.
+
+### 6. Check job run status
+
+```bash
+AWS_PAGER="" aws glue get-job-run \
+  --job-name glue-s3-catalog-job-etl-job \
+  --run-id <RUN_ID>
+```
+
+Replace `<RUN_ID>` with the value returned by `start-job-run`.
 
 ## Version Control
 

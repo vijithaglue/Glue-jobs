@@ -38,8 +38,13 @@ Parameters:
 
   GitHubRepository:
     Type: String
-    Default: vijithaglue/Glue-jobs
-    Description: GitHub repository in owner/repo format.
+    Default: Glue-jobs
+    Description: GitHub repository name.
+
+  GitHubOwner:
+    Type: String
+    Default: vijithaglue
+    Description: GitHub repository owner.
 
   GitHubBranch:
     Type: String
@@ -144,13 +149,13 @@ Resources:
       DefaultArguments:
         "--job-language": python
         "--enable-continuous-cloudwatch-log": "true"
-      SourceControlDetails:
-        Provider: GITHUB
-        Repository: !Ref GitHubRepository
-        Branch: !Ref GitHubBranch
-        Folder: glue_scripts
-        AuthStrategy: PERSONAL_ACCESS_TOKEN
-        AuthToken: !Sub "{{resolve:secretsmanager:glue/github-pat:SecretString:token}}"
+        "--extra-py-files": !Sub "s3://${ScriptBucket}/glue_job/params.py,s3://${ScriptBucket}/glue_job/format_detector.py,s3://${ScriptBucket}/glue_job/__init__.py"
+      # SourceControlDetails is configured post-deployment via the AWS CLI:
+      # aws glue update-source-control-from-job --job-name <job-name> \
+      #   --provider GITHUB --repository-name Glue-jobs \
+      #   --repository-owner vijithaglue --branch-name main \
+      #   --folder glue_scripts --auth-strategy PERSONAL_ACCESS_TOKEN \
+      #   --auth-token <pat-value>
 
 Outputs:
   GlueJobName:

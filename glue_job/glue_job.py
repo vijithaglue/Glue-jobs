@@ -20,24 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_source(glue_context, source_path):
-    """Read data from an S3 source path into a DynamicFrame.
-
-    Uses detect_format to determine whether the source is CSV or JSON,
-    then reads accordingly.
-
-    Args:
-        glue_context: An awsglue.context.GlueContext instance.
-        source_path: S3 path to the source data
-            (e.g. "s3://bucket/path/data.csv").
-
-    Returns:
-        A DynamicFrame containing the source data, or None if the
-        source path contains no files.
-
-    Raises:
-        Exception: If the source path is unreachable or access is
-            denied. The error is logged before re-raising.
-    """
+    """Read data from an S3 source path into a DynamicFrame."""
     fmt = detect_format(source_path)
     try:
         dynamic_frame = glue_context.create_dynamic_frame.from_options(
@@ -59,20 +42,7 @@ def read_source(glue_context, source_path):
 
 
 def write_target(glue_context, dynamic_frame, target_path, partition_key=None):
-    """Write a DynamicFrame to an S3 target path in Parquet format.
-
-    Args:
-        glue_context: An awsglue.context.GlueContext instance.
-        dynamic_frame: The DynamicFrame to write.
-        target_path: S3 path for the output
-            (e.g. "s3://bucket/output/").
-        partition_key: Optional column name to partition by. When None
-            the output is written without partitioning.
-
-    Raises:
-        Exception: If writing fails. The error is logged before
-            re-raising.
-    """
+    """Write a DynamicFrame to an S3 target path in Parquet format."""
     try:
         connection_options = {"path": target_path}
         if partition_key is not None:
@@ -93,22 +63,9 @@ def write_target(glue_context, dynamic_frame, target_path, partition_key=None):
 
 def register_catalog(glue_context, dynamic_frame, catalog_database,
                      catalog_table_name, target_path):
-    """Register or update a table in the AWS Glue Data Catalog.
-
-    Creates the Catalog Database if it does not already exist, then
-    creates or updates the Catalog Table with the schema derived from
-    the DynamicFrame.
-
-    Args:
-        glue_context: An awsglue.context.GlueContext instance.
-        dynamic_frame: The DynamicFrame whose schema defines the table.
-        catalog_database: Name of the Glue Catalog database.
-        catalog_table_name: Name of the Glue Catalog table.
-        target_path: S3 location of the data the table points to.
-    """
+    """Register or update a table in the AWS Glue Data Catalog."""
     glue_client = boto3.client("glue")
 
-    # Create database if it does not exist
     try:
         glue_client.get_database(Name=catalog_database)
     except glue_client.exceptions.EntityNotFoundException:
@@ -117,7 +74,6 @@ def register_catalog(glue_context, dynamic_frame, catalog_database,
             DatabaseInput={"Name": catalog_database}
         )
 
-    # Derive columns from the DynamicFrame schema
     schema = dynamic_frame.schema()
     columns = []
     for field in schema:
@@ -147,12 +103,10 @@ def register_catalog(glue_context, dynamic_frame, catalog_database,
         "Parameters": {"classification": "parquet"},
     }
 
-    # Create or update the table
     try:
         glue_client.get_table(
             DatabaseName=catalog_database, Name=catalog_table_name
         )
-        # Table exists — update it
         glue_client.update_table(
             DatabaseName=catalog_database, TableInput=table_input
         )
@@ -169,12 +123,7 @@ def register_catalog(glue_context, dynamic_frame, catalog_database,
 
 
 def main():
-    """Entry point for the Glue ETL job.
-
-    Wires together parameter parsing, source reading, target writing,
-    and catalog registration. Exits with code 0 on success and code 1
-    on any failure.
-    """
+    """Entry point for the Glue ETL job."""
     try:
         params = parse_args(sys.argv)
     except ValueError as exc:
@@ -188,7 +137,6 @@ def main():
         dynamic_frame = read_source(glue_context, params["source_path"])
 
         if dynamic_frame is None:
-            # Source path was empty — logged inside read_source
             sc.stop()
             sys.exit(0)
 
