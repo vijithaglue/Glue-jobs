@@ -30,7 +30,7 @@ AWSGlueDataCatalog_node1775176406340 = glueContext.create_dynamic_frame.from_cat
 # Script generated for node Join
 AWSGlueDataCatalog_node1775176362327DF = AWSGlueDataCatalog_node1775176362327.toDF()
 AWSGlueDataCatalog_node1775176406340DF = AWSGlueDataCatalog_node1775176406340.toDF()
-Join_node1775176396475 = DynamicFrame.fromDF(AWSGlueDataCatalog_node1775176362327DF.join(AWSGlueDataCatalog_node1775176406340DF, (AWSGlueDataCatalog_node1775176362327DF['pulocationid'] == AWSGlueDataCatalog_node1775176406340DF['pulocationid']), "right"), glueContext, "Join_node1775176396475")
+Join_node = DynamicFrame.fromDF(AWSGlueDataCatalog_node1775176362327DF.join(AWSGlueDataCatalog_node1775176406340DF, (AWSGlueDataCatalog_node1775176362327DF['pulocationid'] == AWSGlueDataCatalog_node1775176406340DF['pulocationid']), "right"), glueContext, "Join_node")
 
 # Script generated for node Amazon S3
 EvaluateDataQuality().process_rows(frame=Join_node1775176396475, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1775176352752", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
