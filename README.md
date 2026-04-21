@@ -118,6 +118,32 @@ Replace `<RUN_ID>` with the value returned by `start-job-run`.
 
 ## Version Control
 
+### Git (local to GitHub)
+
 - Remote: `https://github.com/vijithaglue/Glue-jobs.git`
 - Push changes: `git push origin main`
 - Pull latest: `git pull origin main`
+
+### Glue Source Control (Glue job to/from GitHub)
+
+The Glue job has version control enabled with GitHub. The PAT is fetched automatically from Secrets Manager at runtime so you never need to copy/paste it.
+
+Push Glue job script to GitHub:
+
+```bash
+AWS_PAGER="" aws glue update-source-control-from-job --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')"
+```
+
+Pull from GitHub into Glue job:
+
+```bash
+AWS_PAGER="" aws glue update-job-from-source-control --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')"
+```
+
+Optionally, add these as shell aliases in `~/.zshrc` for convenience:
+
+```bash
+alias glue-push='AWS_PAGER="" aws glue update-source-control-from-job --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c '"'"'import sys,json;print(json.load(sys.stdin)["token"])'"'"')"'
+
+alias glue-pull='AWS_PAGER="" aws glue update-job-from-source-control --job-name glue-s3-catalog-job-etl-job --provider GITHUB --repository-name Glue-jobs --repository-owner vijithaglue --branch-name main --folder glue_job --auth-strategy PERSONAL_ACCESS_TOKEN --auth-token "$(AWS_PAGER="" aws secretsmanager get-secret-value --secret-id glue/github-pat --query SecretString --output text | python3 -c '"'"'import sys,json;print(json.load(sys.stdin)["token"])'"'"')"'
+```
