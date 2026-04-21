@@ -1,6 +1,7 @@
 {
   "name" : "glue-s3-catalog-job-s3toredshift",
   "jobMode" : "SCRIPT",
+  "description" : "",
   "role" : "arn:aws:iam::770763861700:role/glue-s3-catalog-job-GlueJobRole-PDFrpPNvLMOC",
   "executionProperty" : {
     "maxConcurrentRuns" : 1
@@ -11,9 +12,10 @@
     "pythonVersion" : "3"
   },
   "defaultArguments" : {
+    "--enable-job-insights" : "true",
+    "--job-language" : "python",
     "--TempDir" : "s3://glue-s3-catalog-job-scriptbucket-3bhc9q0ebnz5/tmp/",
-    "--enable-continuous-cloudwatch-log" : "true",
-    "--job-language" : "python"
+    "--enable-continuous-cloudwatch-log" : "true"
   },
   "connections" : {
     "connections" : [ "Redshift-2" ]
@@ -25,6 +27,7 @@
   "glueVersion" : "4.0",
   "numberOfWorkers" : 2,
   "workerType" : "G.1X",
+  "executionClass" : "STANDARD",
   "sourceControlDetails" : {
     "provider" : "GITHUB",
     "repository" : "Glue-jobs",

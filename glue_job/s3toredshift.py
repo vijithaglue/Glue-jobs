@@ -30,7 +30,7 @@ job.init(args['JOB_NAME'], args)
 SOURCE_PATH = "s3://athena-ctas-result/SampleTaxis/"
 REDSHIFT_CONNECTION = "Redshift-2"
 REDSHIFT_DATABASE = "dev"
-STAGING_TABLE = "public.taxi_lookup_staging"
+STAGING_TABLE = "public.taxi_lookup_temp"
 TARGET_TABLE = "public.taxi_lookup"
 
 # Step 1: Read CSV data from S3 partitioned path
