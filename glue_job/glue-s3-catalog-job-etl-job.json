@@ -1,0 +1,31 @@
+{
+  "name" : "glue-s3-catalog-job-etl-job",
+  "jobMode" : "SCRIPT",
+  "role" : "arn:aws:iam::770763861700:role/glue-s3-catalog-job-GlueJobRole-PDFrpPNvLMOC",
+  "executionProperty" : {
+    "maxConcurrentRuns" : 1
+  },
+  "command" : {
+    "name" : "glueetl",
+    "scriptLocation" : "s3://glue-s3-catalog-job-scriptbucket-3bhc9q0ebnz5/glue_job/glue_job.py",
+    "pythonVersion" : "3"
+  },
+  "defaultArguments" : {
+    "--extra-py-files" : "s3://glue-s3-catalog-job-scriptbucket-3bhc9q0ebnz5/glue_job/params.py,s3://glue-s3-catalog-job-scriptbucket-3bhc9q0ebnz5/glue_job/format_detector.py,s3://glue-s3-catalog-job-scriptbucket-3bhc9q0ebnz5/glue_job/__init__.py",
+    "--enable-continuous-cloudwatch-log" : "true",
+    "--job-language" : "python"
+  },
+  "maxRetries" : 0,
+  "allocatedCapacity" : 2,
+  "timeout" : 2880,
+  "maxCapacity" : 2.0,
+  "glueVersion" : "4.0",
+  "numberOfWorkers" : 2,
+  "workerType" : "G.1X",
+  "sourceControlDetails" : {
+    "provider" : "GITHUB",
+    "repository" : "Glue-jobs",
+    "branch" : "main",
+    "folder" : "glue_job"
+  }
+}

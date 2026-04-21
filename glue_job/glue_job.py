@@ -1,41 +1,168 @@
-import sys
-from awsglue.transforms import *
-from awsglue.utils import getResolvedOptions
-from pyspark.context import SparkContext
-from awsglue.context import GlueContext
-from awsglue.job import Job
-from awsgluedq.transforms import EvaluateDataQuality
-from awsglue.dynamicframe import DynamicFrame
+"""Main Glue ETL job script.
 
-args = getResolvedOptions(sys.argv, ['JOB_NAME'])
-sc = SparkContext()
-glueContext = GlueContext(sc)
-spark = glueContext.spark_session
-job = Job(glueContext)
-job.init(args['JOB_NAME'], args)
-
-# Default ruleset used by all target nodes with data quality enabled
-DEFAULT_DATA_QUALITY_RULESET = """
-    Rules = [
-        ColumnCount > 0
-    ]
+Reads data from an S3 source path (CSV or JSON), writes to a target S3
+path in Parquet format, and registers the output in the AWS Glue Data
+Catalog.
 """
 
-# Script generated for node AWS Glue Data Catalog
-AWSGlueDataCatalog_node1775176362327 = glueContext.create_dynamic_frame.from_catalog(database="parquetdb", table_name="taxi_zone_lookup", transformation_ctx="AWSGlueDataCatalog_node1775176362327")
+import logging
+import sys
 
-# Script generated for node AWS Glue Data Catalog
-AWSGlueDataCatalog_node1775176406340 = glueContext.create_dynamic_frame.from_catalog(database="parquetdb", table_name="yellow_tripdata", transformation_ctx="AWSGlueDataCatalog_node1775176406340")
+import boto3
+from awsglue.context import GlueContext
+from pyspark.context import SparkContext
 
-# Script generated for node Join
-AWSGlueDataCatalog_node1775176362327DF = AWSGlueDataCatalog_node1775176362327.toDF()
-AWSGlueDataCatalog_node1775176406340DF = AWSGlueDataCatalog_node1775176406340.toDF()
-Join_node1775176396475 = DynamicFrame.fromDF(AWSGlueDataCatalog_node1775176362327DF.join(AWSGlueDataCatalog_node1775176406340DF, (AWSGlueDataCatalog_node1775176362327DF['pulocationid'] == AWSGlueDataCatalog_node1775176406340DF['pulocationid']), "right"), glueContext, "Join_node1775176396475")
+from glue_job.format_detector import detect_format
+from glue_job.params import parse_args
 
-# Script generated for node Amazon S3
-EvaluateDataQuality().process_rows(frame=Join_node1775176396475, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1775176352752", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
-AmazonS3_node1775176527600 = glueContext.getSink(path="s3://athena-ctas-result/testse/", connection_type="s3", updateBehavior="UPDATE_IN_DATABASE", partitionKeys=[], enableUpdateCatalog=True, transformation_ctx="AmazonS3_node1775176527600")
-AmazonS3_node1775176527600.setCatalogInfo(catalogDatabase="parquetdb",catalogTableName="taxi_join")
-AmazonS3_node1775176527600.setFormat("glueparquet", compression="snappy")
-AmazonS3_node1775176527600.writeFrame(Join_node1775176396475)
-job.commit()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def read_source(glue_context, source_path):
+    """Read data from an S3 source path into a DynamicFrame."""
+    fmt = detect_format(source_path)
+    try:
+        dynamic_frame = glue_context.create_dynamic_frame.from_options(
+            connection_type="s3",
+            connection_options={"paths": [source_path]},
+            format=fmt,
+        )
+        if dynamic_frame.count() == 0:
+            logger.warning(
+                "Source path %s contains no files. Returning None.", source_path
+            )
+            return None
+        return dynamic_frame
+    except Exception:
+        logger.error(
+            "Failed to read from source path %s.", source_path, exc_info=True
+        )
+        raise
+
+
+def write_target(glue_context, dynamic_frame, target_path, partition_key=None):
+    """Write a DynamicFrame to an S3 target path in Parquet format."""
+    try:
+        connection_options = {"path": target_path}
+        if partition_key is not None:
+            connection_options["partitionKeys"] = [partition_key]
+
+        glue_context.write_dynamic_frame.from_options(
+            frame=dynamic_frame,
+            connection_type="s3",
+            connection_options=connection_options,
+            format="parquet",
+        )
+    except Exception:
+        logger.error(
+            "Failed to write to target path %s.", target_path, exc_info=True
+        )
+        raise
+
+
+def register_catalog(glue_context, dynamic_frame, catalog_database,
+                     catalog_table_name, target_path):
+    """Register or update a table in the AWS Glue Data Catalog."""
+    glue_client = boto3.client("glue")
+
+    try:
+        glue_client.get_database(Name=catalog_database)
+    except glue_client.exceptions.EntityNotFoundException:
+        logger.info("Database %s not found. Creating it.", catalog_database)
+        glue_client.create_database(
+            DatabaseInput={"Name": catalog_database}
+        )
+
+    schema = dynamic_frame.schema()
+    columns = []
+    for field in schema:
+        col_type = field.dataType.jsonValue().get("dataType", "string")
+        columns.append({"Name": field.name, "Type": col_type})
+
+    table_input = {
+        "Name": catalog_table_name,
+        "StorageDescriptor": {
+            "Columns": columns,
+            "Location": target_path,
+            "InputFormat": (
+                "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+            ),
+            "OutputFormat": (
+                "org.apache.hadoop.hive.ql.io.parquet."
+                "MapredParquetOutputFormat"
+            ),
+            "SerdeInfo": {
+                "SerializationLibrary": (
+                    "org.apache.hadoop.hive.ql.io.parquet.serde."
+                    "ParquetHiveSerDe"
+                ),
+            },
+        },
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {"classification": "parquet"},
+    }
+
+    try:
+        glue_client.get_table(
+            DatabaseName=catalog_database, Name=catalog_table_name
+        )
+        glue_client.update_table(
+            DatabaseName=catalog_database, TableInput=table_input
+        )
+        logger.info(
+            "Updated table %s.%s.", catalog_database, catalog_table_name
+        )
+    except glue_client.exceptions.EntityNotFoundException:
+        glue_client.create_table(
+            DatabaseName=catalog_database, TableInput=table_input
+        )
+        logger.info(
+            "Created table %s.%s.", catalog_database, catalog_table_name
+        )
+
+
+def main():
+    """Entry point for the Glue ETL job."""
+    try:
+        params = parse_args(sys.argv)
+    except ValueError as exc:
+        logger.error("Parameter error: %s", exc)
+        sys.exit(1)
+
+    sc = SparkContext()
+    glue_context = GlueContext(sc)
+
+    try:
+        dynamic_frame = read_source(glue_context, params["source_path"])
+
+        if dynamic_frame is None:
+            sc.stop()
+            sys.exit(0)
+
+        write_target(
+            glue_context,
+            dynamic_frame,
+            params["target_path"],
+            partition_key=params["partition_key"],
+        )
+
+        register_catalog(
+            glue_context,
+            dynamic_frame,
+            params["catalog_database"],
+            params["catalog_table_name"],
+            params["target_path"],
+        )
+    except Exception:
+        logger.error("Job failed.", exc_info=True)
+        sc.stop()
+        sys.exit(1)
+
+    logger.info("Job completed successfully.")
+    sc.stop()
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
