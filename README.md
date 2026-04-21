@@ -26,6 +26,7 @@ A collection of AWS Glue ETL jobs managed via CloudFormation with GitHub version
 │   ├── conftest.py
 │   ├── test_format_detector.py
 │   └── test_params.py
+├── enable_vcs.py              # Enable GitHub version control on any Glue job
 ├── requirements.txt
 └── README.md
 ```
@@ -92,6 +93,28 @@ aws s3 cp glue_job/__init__.py s3://<SCRIPT_BUCKET>/glue_job/__init__.py
 ```
 
 ## Running the Jobs
+
+### Important: Enable Version Control After Creating a New Job
+
+CloudFormation does not support `SourceControlDetails` for Glue jobs. After deploying a new job, you must enable version control separately using the included `enable_vcs.py` script:
+
+```bash
+python3 enable_vcs.py <job-name> [folder]
+```
+
+Examples:
+
+```bash
+python3 enable_vcs.py glue-s3-catalog-job-etl-job glue_job
+python3 enable_vcs.py glue-s3-catalog-job-s3toredshift glue_job
+```
+
+This script:
+1. Fetches the GitHub PAT from Secrets Manager (`glue/github-pat`)
+2. Gets the current job configuration
+3. Updates the job with GitHub source control (repo: `vijithaglue/Glue-jobs`, branch: `main`)
+
+Run this every time you create a new Glue job via CloudFormation.
 
 ### S3-to-Catalog ETL Job
 
