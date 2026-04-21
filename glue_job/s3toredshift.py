@@ -20,10 +20,10 @@ job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
 # Read from Glue Catalog table
-datasource = glueContext.create_dynamic_frame.from_catalog(
+source = glueContext.create_dynamic_frame.from_catalog(
     database="parquetdb",
     table_name="taxi_join",
-    transformation_ctx="datasource"
+    transformation_ctx="source"
 )
 
 # Write to Redshift via Glue connection
