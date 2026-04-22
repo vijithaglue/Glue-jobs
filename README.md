@@ -98,7 +98,24 @@ aws s3 cp glue_job/__init__.py s3://<SCRIPT_BUCKET>/glue_job/__init__.py
 
 ### Important: Enable Version Control After Creating a New Job
 
-CloudFormation does not support `SourceControlDetails` for Glue jobs. After deploying a new job, you must enable version control separately using the included `enable_vcs.py` script:
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⚠️  AWS GLUE VERSION CONTROL LIMITATION                                   ║
+║                                                                            ║
+║  AWS Glue does NOT support enabling version control (Git integration)      ║
+║  at the time of job creation via CLI, API, or Terraform.                   ║
+║                                                                            ║
+║  You must:                                                                 ║
+║    1. Create the Glue job first (create-job / aws_glue_job resource)       ║
+║    2. Then enable version control as a separate step using:                ║
+║       aws glue update-source-control-from-job --job-name <job-name> ...    ║
+║                                                                            ║
+║  This is a known AWS limitation — source control can only be attached      ║
+║  to an existing job, not during creation.                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+After deploying a new job, you must enable version control separately using the included `enable_vcs.py` script:
 
 ```bash
 python3 enable_vcs.py <job-name> [folder]
