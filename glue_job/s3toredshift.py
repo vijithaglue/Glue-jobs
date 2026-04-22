@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 SOURCE_PATH = "s3://athena-ctas-result/SampleTaxis/"
 REDSHIFT_CONNECTION = "Redshift-2"
 REDSHIFT_DATABASE = "dev"
-STAGING_TABLE = "public.taxi_lookup_staging"
+STAGING_TABLE = "public.taxi_lookup_Temp"
 TARGET_TABLE = "public.taxi_lookup"
 
 DLQ_PATH = "s3://athena-ctas-result/dlq/s3toredshift/"
